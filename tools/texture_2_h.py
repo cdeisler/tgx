@@ -25,28 +25,50 @@ def RGB565(rgb):
 
 def createTexture(im, name):
     NAMESPACE = "tgx"
-    ar = np.asarray(im)
-    with open(name + "_texture.h", "w") as f:   
-        f.write('//\n');
-        f.write(f'// texture [{name}]\n');
-        f.write('//\n');
-        f.write('#pragma once\n\n');
-        f.write('#include <tgx.h>\n\n');
-        f.write(f'const uint16_t {name}_texture_data[{im.width}*{im.height}] PROGMEM = {{\n');
-        i = 0
-        for y in range(im.height):
-            for x in range(im.width):
-                f.write(RGB565(ar[im.height - 1 - y, x]))
-                if y*x != ((im.width-1)*(im.height-1)):
-                    f.write(", ")
-                i += 1
-                if i == 16:
-                    f.write("\n")
-                    i = 0;
-        f.write('};\n\n')
-        f.write(f'const {NAMESPACE}::Image<{NAMESPACE}::RGB565> {name}_texture((void*){name}_texture_data, {im.width}, {im.height});')                    
-        f.write(f'\n\n/** end of file {name}_texture.h */\n\n');
-    print(f"\nTexture file [{name}_texture.h] created.\n\n")
+    is_animated = hasattr(im, "n_frames") and im.n_frames > 1
+    frame_count = im.n_frames if is_animated else 1
+    
+    print(f"\nTexture files for {frame_count} frames detected.\n")
+    for frame in range(frame_count):
+        if is_animated:
+            im.seek(frame)
+
+        # Ensure each frame is in RGB format
+        frame_image = im.copy()
+        if frame_image.mode != 'RGB':
+            frame_image = frame_image.convert('RGB')
+
+        ar = np.asarray(frame_image)
+        
+        print(f"Frame {frame}: Array shape {ar.shape}")
+        
+        with open(f"{name}_texture_{frame}.h", "w") as f:
+            f.write('//\n')
+            f.write(f'// texture [{name}] frame {frame}\n')
+            f.write('//\n')
+            f.write('#pragma once\n\n')
+            f.write('#include <tgx.h>\n\n')
+            f.write(f'const uint16_t {name}_texture_data_{frame}[{im.width}*{im.height}] PROGMEM = {{\n')
+
+            i = 0
+            for y in range(im.height):
+                for x in range(im.width):
+                    f.write(RGB565(ar[im.height - 1 - y, x]))
+                    if y*x != ((im.width-1)*(im.height-1)):
+                        f.write(", ")
+                    i += 1
+                    if i == 16:
+                        f.write("\n")
+                        i = 0
+
+            f.write('};\n\n')
+            f.write(f'const {NAMESPACE}::Image<{NAMESPACE}::RGB565> {name}_texture_{frame}((void*){name}_texture_data_{frame}, {im.width}, {im.height});')
+            f.write(f'\n\n/** end of file {name}_texture_{frame}.h */\n\n')
+
+    if frame_count > 1:
+        print(f"\nTexture files for {frame_count} frames created.\n")
+    else:
+        print(f"\nTexture file [{name}_texture.h] created.\n\n")
 
 
 # In[ ]:
